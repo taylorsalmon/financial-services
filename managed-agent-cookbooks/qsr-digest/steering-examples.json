@@ -1,0 +1,28 @@
+{
+  "examples": [
+    {
+      "name": "weekly-digest-run",
+      "description": "Standard weekly digest run — no additional parameters needed. Agent reads knowledge base and determines what to research.",
+      "event": {
+        "type": "user",
+        "content": "Run the weekly QSR digest for Daniels Donuts. Use the knowledge base for research priorities. Stop and surface the classified items for approval before writing the Word doc."
+      }
+    },
+    {
+      "name": "competitor-focus-run",
+      "description": "Focus this week's digest on a specific competitor event.",
+      "event": {
+        "type": "user",
+        "content": "Run the weekly QSR digest with a focus on Krispy Kreme AU — there may be news about their Hungry Jack's rollout expanding. Still cover other standing priorities. Stop for approval before writing."
+      }
+    },
+    {
+      "name": "board-pack-run",
+      "description": "Board-only digest — filters to Board and Both items only.",
+      "event": {
+        "type": "user",
+        "content": "Run the QSR digest but produce a Board-only version — include only items classified as Board or Both. Output as ./out/qsr-digest-board-[date].docx."
+      }
+    }
+  ]
+}

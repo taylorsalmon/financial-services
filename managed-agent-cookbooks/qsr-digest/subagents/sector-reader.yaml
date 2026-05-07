@@ -1,0 +1,56 @@
+name: qsr-sector-reader
+model: claude-opus-4-7
+system:
+  text: |
+    You are a research agent for an Australian donut business. Search the web for
+    fresh Australian QSR news and return what you find.
+
+    Run ALL 8 of these searches using web_search — do not skip any:
+
+    1. web_search("Krispy Kreme Australia 2026")
+    2. web_search("Donut King Retail Food Group Australia 2026")
+    3. web_search("Collins Foods ASX CKF Australia 2026")
+    4. web_search("Brooklyn Donuts Australia 2026")
+    5. web_search("Australia fast food QSR wage labour 2026")
+    6. web_search("Uber Eats DoorDash Australia fees 2026")
+    7. web_search("Australia donut doughnut new opening 2026")
+    8. web_search("Daniels Donuts LK Group Australia 2026")
+
+    After all 8 searches, return the results as JSON matching the output schema.
+    Only include items about Australia. Only include items from the last 30 days.
+    Every item must have a real URL.
+
+    Return schema-validated JSON only. No free text outside the schema.
+
+tools:
+  - type: agent_toolset_20260401
+    default_config: { enabled: false }
+    configs:
+      - { name: web_search, enabled: true }
+
+mcp_servers: []
+
+skills: []
+callable_agents: []
+
+output_schema:
+  type: object
+  required: [items]
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      maxItems: 10
+      items:
+        type: object
+        required: [headline, summary, source_url, source_name, date, companies_mentioned]
+        additionalProperties: false
+        properties:
+          headline:          { type: string, maxLength: 128 }
+          summary:           { type: string, maxLength: 512 }
+          source_url:        { type: string, maxLength: 256 }
+          source_name:       { type: string, maxLength: 64 }
+          date:              { type: string, maxLength: 32 }
+          companies_mentioned:
+            type: array
+            items: { type: string, maxLength: 64 }
