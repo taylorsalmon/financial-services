@@ -125,7 +125,7 @@ Run ALL 9 of these web searches — do not skip any:
 
 After all 9 searches, collect results that mention Australia and have a real URL.
 Do NOT filter by date — include anything from the last 90 days. Let the classifier decide relevance.
-Limit to a maximum of 15 raw results — take the most recent and most relevant ones only.
+Limit to a maximum of 10 raw results — take only the most recent and most directly relevant ones. Quality over quantity.
 
 Write the results to /out/raw_results.json using bash:
 bash: mkdir -p /out && python3 -c "import json; data = [...]; open('/out/raw_results.json','w').write(json.dumps(data, indent=2))"
@@ -166,9 +166,11 @@ Apply these classification rules to every item:
 - Prefer Australian items. Also include international items (Singapore, US, UK) if they involve a brand that operates or is expanding into Australia — these are competitive intelligence.
 - When in doubt, INCLUDE the item as NORMAL priority rather than cutting it.
 
-## Calibration
-Target 6-10 items per digest — hard cap at 10. Pick the most actionable items.
+## Calibration — quality over quantity
+Target 5-6 items per digest — hard cap at 6. Be ruthless. Only include items that are genuinely actionable for Daniels Donuts or LK Group right now.
+Ask yourself: would a busy GM or board member want to read this? If not, cut it.
 A new international donut brand opening in Australia is HIGH priority even if the source is a trade publication.
+Duplicate or near-duplicate stories about the same event count as one item — pick the best source.
 Include items from the last 90 days — not just 30.
 
 ## Knowledge base
@@ -521,55 +523,102 @@ def gmail_draft(result: dict):
 
     n_total, n_high = len(findings), len(high)
 
-    def fmt_item(f, star):
-        src = f"{f.get('source_name','')} — {f.get('url','')}" if f.get("url") else f"[UNSOURCED] {f.get('source_name','')}"
-        lines = [
-            f"{'★ HIGH PRIORITY' if star else '•'}",
-            f"[{f.get('audience','')}] {f.get('headline','')}",
-            f"→ {f.get('why','')}" if f.get("why") else "",
-            f"   {f.get('summary','')}" if f.get("summary") else "",
-            f"   Source: {src}",
-            f"   {f.get('date','')}" if f.get("date") else "",
-            "",
-        ]
-        return "\n".join(l for l in lines if l != "")
+    audience_colour = {"GM": "#1a73e8", "Board": "#9c27b0", "Both": "#2e7d32"}
 
-    body_lines = [
-        "LK Group — QSR Intelligence Digest",
-        f"{TODAY}  |  Daniels Donuts  |  {n_total} items  |  {n_high} HIGH PRIORITY",
-        "Sources: Public — ASX filings, news, public broker research",
-        "Review and send to relevant stakeholders. Do not forward without review.",
-        "=" * 65, "",
-    ]
+    def audience_badge(aud):
+        colour = audience_colour.get(aud, "#555")
+        return (f'<span style="background:{colour};color:#fff;font-size:11px;'
+                f'font-weight:600;padding:2px 7px;border-radius:3px;'
+                f'letter-spacing:0.5px;">{aud.upper()}</span>')
+
+    def fmt_item_html(f, star):
+        aud      = f.get("audience", "")
+        headline = f.get("headline", "")
+        why      = f.get("why", "")
+        summary  = f.get("summary", "")
+        src_name = f.get("source_name", "")
+        url      = f.get("url", "")
+        date     = f.get("date", "")
+        src_html = (f'<a href="{url}" style="color:#555;">{src_name}</a>'
+                    if url else f'<span style="color:#c00;font-weight:600;">[UNSOURCED] {src_name}</span>')
+        priority_tag = ('<span style="color:#b71c1c;font-weight:700;">★ HIGH PRIORITY&nbsp;&nbsp;</span>'
+                        if star else "")
+        return f"""
+        <tr><td style="padding:16px 0;border-bottom:1px solid #e8e8e8;">
+          <div style="margin-bottom:6px;">{priority_tag}{audience_badge(aud)}</div>
+          <div style="font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:6px;">{headline}</div>
+          {"<div style='color:#2e7d32;font-style:italic;margin-bottom:6px;'>→ " + why + "</div>" if why else ""}
+          {"<div style='color:#444;font-size:13px;margin-bottom:6px;'>" + summary + "</div>" if summary else ""}
+          <div style="font-size:12px;color:#777;">{src_html}&nbsp;·&nbsp;{date}</div>
+        </td></tr>"""
+
+    def section_header(title, colour):
+        return (f'<tr><td style="padding:20px 0 8px;">'
+                f'<div style="font-size:12px;font-weight:700;letter-spacing:1px;'
+                f'color:{colour};border-bottom:2px solid {colour};padding-bottom:4px;">'
+                f'{title}</div></td></tr>')
+
+    items_html = ""
     if high:
-        body_lines += ["★ HIGH PRIORITY", "─" * 65, ""]
+        items_html += section_header("★ HIGH PRIORITY", "#b71c1c")
         for f in high:
-            body_lines.append(fmt_item(f, True))
+            items_html += fmt_item_html(f, True)
     if normal:
-        body_lines += ["• NORMAL", "─" * 65, ""]
+        items_html += section_header("NORMAL", "#555")
         for f in normal:
-            body_lines.append(fmt_item(f, False))
+            items_html += fmt_item_html(f, False)
 
-    board_items = [f for f in findings if f.get("audience") in ("Board","Both")]
-    gm_items    = [f for f in findings if f.get("audience") in ("GM","Both")]
+    board_items = [f for f in findings if f.get("audience") in ("Board", "Both")]
+    gm_items    = [f for f in findings if f.get("audience") in ("GM", "Both")]
 
-    body_lines += ["", "─" * 65, "FOR THE BOARD", "─" * 65]
-    for f in board_items:
-        body_lines.append(f"  {f.get('headline','')[:90]}")
-    body_lines += ["", "─" * 65, "FOR THE GM", "─" * 65]
-    for f in gm_items:
-        body_lines.append(f"  {f.get('headline','')[:90]}")
-    body_lines += [
-        "", "─" * 65,
-        "Generated by LK Group QSR Digest Agent (multi-agent) · Powered by Anthropic Claude",
-        "This is a draft — review items above and send to distribute, or discard to suppress.",
-    ]
+    def summary_list(items):
+        return "".join(f'<li style="margin-bottom:4px;">{f.get("headline","")}</li>' for f in items)
+
+    html = f"""<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;max-width:680px;margin:0 auto;color:#1a1a1a;">
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr><td style="background:#1a1a2e;padding:24px 28px;border-radius:6px 6px 0 0;">
+      <div style="font-size:11px;color:#aaa;letter-spacing:1px;text-transform:uppercase;">LK Group</div>
+      <div style="font-size:22px;font-weight:700;color:#fff;margin:4px 0;">QSR Intelligence Digest</div>
+      <div style="color:#ccc;font-size:13px;">{TODAY}&nbsp;&nbsp;·&nbsp;&nbsp;Daniels Donuts&nbsp;&nbsp;·&nbsp;&nbsp;
+        <strong style="color:#fff;">{n_total} items</strong>&nbsp;&nbsp;·&nbsp;&nbsp;
+        <span style="color:#ff8a80;">{n_high} HIGH PRIORITY</span>
+      </div>
+    </td></tr>
+    <tr><td style="background:#fff3e0;padding:10px 28px;font-size:12px;color:#555;">
+      Sources: Public — ASX filings, news, public broker research&nbsp;&nbsp;·&nbsp;&nbsp;
+      <strong>Review before forwarding. Do not distribute without review.</strong>
+    </td></tr>
+    <tr><td style="padding:0 28px;">
+      <table width="100%" cellpadding="0" cellspacing="0">{items_html}</table>
+    </td></tr>
+    <tr><td style="padding:20px 28px 8px;">
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr><td width="48%" valign="top" style="padding-right:16px;">
+          <div style="font-size:12px;font-weight:700;color:#9c27b0;border-bottom:2px solid #9c27b0;padding-bottom:4px;margin-bottom:8px;">FOR THE BOARD</div>
+          <ul style="margin:0;padding-left:16px;font-size:13px;color:#333;">{summary_list(board_items)}</ul>
+        </td>
+        <td width="4%"></td>
+        <td width="48%" valign="top">
+          <div style="font-size:12px;font-weight:700;color:#1a73e8;border-bottom:2px solid #1a73e8;padding-bottom:4px;margin-bottom:8px;">FOR THE GM</div>
+          <ul style="margin:0;padding-left:16px;font-size:13px;color:#333;">{summary_list(gm_items)}</ul>
+        </td></tr>
+      </table>
+    </td></tr>
+    <tr><td style="padding:16px 28px 24px;border-top:1px solid #eee;margin-top:16px;">
+      <div style="font-size:11px;color:#999;">
+        Generated by LK Group QSR Digest Agent · Powered by Anthropic Claude<br>
+        <em>This is a draft — review items above and send to distribute, or discard to suppress.</em>
+      </div>
+    </td></tr>
+  </table>
+</body></html>"""
 
     msg = email.message.EmailMessage()
     msg["To"]      = to_email
     msg["From"]    = to_email
     msg["Subject"] = f"LK Group QSR Digest — {TODAY} — {n_total} items ({n_high} HIGH)"
-    msg.set_content("\n".join(body_lines))
+    msg.set_content("This digest requires an HTML-compatible email client.")
+    msg.add_alternative(html, subtype="html")
 
     raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
     service.users().drafts().create(userId="me", body={"message": {"raw": raw}}).execute()
