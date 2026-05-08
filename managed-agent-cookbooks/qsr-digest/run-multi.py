@@ -125,7 +125,7 @@ Run ALL 9 of these web searches — do not skip any:
 
 After all 9 searches, collect results that mention Australia and have a real URL.
 Do NOT filter by date — include anything from the last 90 days. Let the classifier decide relevance.
-Limit to a maximum of 15 raw results — take the most recent and most relevant ones only.
+Limit to a maximum of 10 raw results — take only the most recent and most directly relevant ones. Quality over quantity.
 
 Write the results to /out/raw_results.json using bash:
 bash: mkdir -p /out && python3 -c "import json; data = [...]; open('/out/raw_results.json','w').write(json.dumps(data, indent=2))"
@@ -166,9 +166,11 @@ Apply these classification rules to every item:
 - Prefer Australian items. Also include international items (Singapore, US, UK) if they involve a brand that operates or is expanding into Australia — these are competitive intelligence.
 - When in doubt, INCLUDE the item as NORMAL priority rather than cutting it.
 
-## Calibration
-Target 6-10 items per digest — hard cap at 10. Pick the most actionable items.
+## Calibration — quality over quantity
+Target 5-6 items per digest — hard cap at 6. Be ruthless. Only include items that are genuinely actionable for Daniels Donuts or LK Group right now.
+Ask yourself: would a busy GM or board member want to read this? If not, cut it.
 A new international donut brand opening in Australia is HIGH priority even if the source is a trade publication.
+Duplicate or near-duplicate stories about the same event count as one item — pick the best source.
 Include items from the last 90 days — not just 30.
 
 ## Knowledge base
