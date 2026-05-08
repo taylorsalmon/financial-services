@@ -1,27 +1,19 @@
 # QSR Digest — managed-agent cookbook
-# Forked from market-researcher template
-# Adapted for LK Group / Daniels Donuts weekly intelligence digest
+# LK Group / Daniels Donuts weekly intelligence digest
+# Agent context: ./agents/qsr-digest-orchestrator.md
+# Knowledge base: ./knowledge-base/ (injected at runtime by run-single.py)
 
 name: qsr-digest
 model: claude-opus-4-7
 
 system:
   file: ./agents/qsr-digest-orchestrator.md
-  append: "You are running headless. Produce output files in ./out/; do not assume an open Office document. Do not attempt to read ./knowledge-base/ yourself — pass the path to the classifier subagent, which will read it."
 
 tools:
   - type: agent_toolset_20260401
     default_config: { enabled: false }
     configs:
-      - { name: read,  enabled: true }
-      - { name: grep,  enabled: true }
-      - { name: glob,  enabled: true }
-
-skills:
-  - { path: ./skills/sector-overview }
-  - { path: ./skills/docx-author }
-
-callable_agents:
-  - { manifest: ./subagents/sector-reader.yaml }
-  - { manifest: ./subagents/digest-classifier.yaml }
-  - { manifest: ./subagents/note-writer.yaml }
+      - { name: web_search, enabled: true }
+      - { name: bash,       enabled: true }
+      - { name: write,      enabled: true }
+      - { name: read,       enabled: true }

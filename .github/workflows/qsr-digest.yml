@@ -1,0 +1,39 @@
+name: QSR Intelligence Digest
+
+on:
+  schedule:
+    - cron: '0 21 * * 0'  # Every Sunday 9pm UTC = Monday 7am AEST
+  workflow_dispatch:        # Allow manual trigger from GitHub UI
+
+jobs:
+  run-digest:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r managed-agent-cookbooks/qsr-digest/requirements.txt
+
+      - name: Write .env
+        run: |
+          echo "ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}" > .env
+          echo "DIGEST_TO_EMAIL=${{ secrets.DIGEST_TO_EMAIL }}" >> .env
+
+      - name: Run QSR digest
+        working-directory: managed-agent-cookbooks/qsr-digest
+        run: python3 run-multi.py
+
+      - name: Upload Word doc artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: qsr-digest
+          path: managed-agent-cookbooks/qsr-digest/out/*.docx
+          retention-days: 30
